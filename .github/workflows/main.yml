@@ -35,7 +35,7 @@ jobs:
         id: get_hash
         shell: pwsh
         run: |
-          $hash = (Get-FileHash -Path "Output/MurderRando.zip" -Algorithm SHA256).Hash
+          $hash = (Get-FileHash -Path "Output/ConnectionSettingsRando.zip" -Algorithm SHA256).Hash
           echo "hash=$hash" >> $env:GITHUB_OUTPUT
 
       - name: Get Assembly version
@@ -63,6 +63,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: Output/MurderRando.zip
-          asset_name: MurderRando.zip
+          asset_path: Output/ConnectionSettingsRando.zip
+          asset_name: ConnectionSettingsRando.zip
           asset_content_type: application/zip
