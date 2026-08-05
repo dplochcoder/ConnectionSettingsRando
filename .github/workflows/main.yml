@@ -1,0 +1,68 @@
+name: Build and Publish
+
+on:
+  push:
+    branches: main
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and create release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup MAPI
+        uses: BadMagic100/setup-hk@v2
+        with:
+          apiPath: API
+          dependencyFilePath: Dependencies.txt
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+      
+      - name: Install dependencies
+        run: dotnet restore
+
+      - name: Build project
+        run: dotnet build --configuration Release
+
+      - name: Get SHA256 of zipped mod
+        id: get_hash
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash -Path "Output/MurderRando.zip" -Algorithm SHA256).Hash
+          echo "hash=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Get Assembly version
+        id: get_version
+        shell: pwsh
+        run: |
+          $version = Get-Content Version.txt
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: Release v${{ steps.get_version.outputs.version }}
+          body: "SHA256: ${{ steps.get_hash.outputs.hash }}"
+          draft: false
+          prerelease: false
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: Output/MurderRando.zip
+          asset_name: MurderRando.zip
+          asset_content_type: application/zip
