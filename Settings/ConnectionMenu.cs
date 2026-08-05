@@ -26,7 +26,7 @@ namespace ConnectionSettingsRando
         private static bool HandleButton(MenuPage landingPage, out SmallButton button)
         {
             button = Instance.pageRootButton;
-            button.Text.color = RandoInterop.ConnectionSettings.Enabled ? Colors.TRUE_COLOR : Colors.DEFAULT_COLOR;
+            button.Text.color = RandoInterop.Settings.Enabled ? Colors.TRUE_COLOR : Colors.DEFAULT_COLOR;
             return true;
         }
 
@@ -40,7 +40,7 @@ namespace ConnectionSettingsRando
             // Define connection page
             accessPage = new MenuPage("accessPage", connectionPage);
             
-            topLevelElementFactory = new(accessPage, RandoInterop.ConnectionSettings);
+            topLevelElementFactory = new(accessPage, RandoInterop.Settings);
             VerticalItemPanel topLevelPanel = new(accessPage, new Vector2(0, 400), 60, true, topLevelElementFactory.Elements);
             topLevelElementFactory.ElementLookup[nameof(CSRSettings.Enabled)].SelfChanged += EnableSwitch;
             topLevelPanel.ResetNavigation();
@@ -53,7 +53,7 @@ namespace ConnectionSettingsRando
         // Define parameter changes
         private void EnableSwitch(IValueElement obj)
         {
-            pageRootButton.Text.color = RandoInterop.ConnectionSettings.Enabled ? Colors.TRUE_COLOR : Colors.DEFAULT_COLOR;
+            pageRootButton.Text.color = RandoInterop.Settings.Enabled ? Colors.TRUE_COLOR : Colors.DEFAULT_COLOR;
         }
 
         private void SetButtonColor(SmallButton target, Func<bool> condition)
