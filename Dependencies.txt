@@ -1,7 +1,5 @@
-ItemChanger
 MenuChanger
 RandoSettingsManager
 RandomizerCore
 RandomizerCore.Json
 Randomizer 4
-Satchel

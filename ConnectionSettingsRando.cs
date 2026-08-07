@@ -6,7 +6,7 @@ namespace ConnectionSettingsRando
     public class ConnectionSettingsRando : Mod, IGlobalSettings<CSRSettings> 
     {
         new public string GetName() => "ConnectionSettingsRando";
-        public override string GetVersion() => "1.0.0.0";
+        public override string GetVersion() => "1.1.0.0";
         public CSRSettings GS { get; internal set; } = new();
         public void OnLoadGlobal(CSRSettings s) => GS = s;
         public CSRSettings OnSaveGlobal() => GS;
@@ -30,6 +30,9 @@ namespace ConnectionSettingsRando
         {
             Log("Initializing Mod...");
             RandoInterop.Hook();
+
+            if (ModHooks.GetMod("RandoSettingsManager") is Mod)
+                RSM_Interop.Hook();
         }
     }   
 }

@@ -29,6 +29,9 @@ namespace ConnectionSettingsRando
         {
             foreach (ISettingsProvider provider in ConnectionsRegistry.Providers)
             {
+                if (!RandoInterop.Settings.RandomizedSettings.Contains(provider.Name))
+                    continue;
+
                 try
                 {
                     provider.OverrideSettings(
@@ -36,6 +39,11 @@ namespace ConnectionSettingsRando
                             provider.GetSettings(),
                             provider.SettingsType,
                             rng));
+                    RandomizationStats stats = randomizer.LastStats;
+                    ConnectionSettingsRando.Instance.Log(
+                    $"{provider.Name}: " +
+                    $"{stats.RandomizedMembers} settings randomized, " +
+                    $"{stats.SkippedMembers} skipped");
                 }
                 catch (Exception ex)
                 {

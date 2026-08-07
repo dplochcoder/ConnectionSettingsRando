@@ -15,10 +15,11 @@ Supported:
 - Enum settings
 - Nested settings objects
 - Fields and properties
+- Individual connection opt-in/out
+- Boolean enabling weighting odds.
 
 Not currently supported:
-- Attribute-based constraints (`MenuRange`, `DynamicBound`, etc.)
-- Configuration-based opt-outs and weights.
+- Attribute-based constraints (IE: `DynamicBound`)
 - Custom randomization rules per connection.
 - Dependency-aware randomization between settings.
 
@@ -120,7 +121,6 @@ will retain its existing value.
 This is intentional while constraint handling is being designed.
 
 Future versions will support:
-- `MenuRange`
 - `DynamicBound`
 - Other MenuChanger attributes
 
@@ -136,5 +136,4 @@ A connection should:
 
 - Attribute constraint system
 - Dynamic bounds
-- Per-setting opt-out configuration
 - Custom randomization handlers

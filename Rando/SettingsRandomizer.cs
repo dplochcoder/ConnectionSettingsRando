@@ -3,15 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using MenuChanger.Attributes;
-using MenuChanger.MenuElements;
 
 namespace ConnectionSettingsRando
 {
+    public class RandomizationStats
+    {
+        public int RandomizedMembers { get; set; }
+        public int SkippedMembers { get; set; }
+    }
     public class SettingsRandomizer
     {
+        public RandomizationStats LastStats { get; private set; } = new();
         public T Randomize<T>(T settings, Random rng)
             where T : new()
         {
+            LastStats = new();
             T clone = Clone(settings);
 
             foreach (MemberInfo member in GetMembers(typeof(T)))
@@ -129,10 +135,9 @@ namespace ConnectionSettingsRando
             return member.GetCustomAttribute<TAttribute>();
         }
 
-        private static bool HasAttributes(MemberInfo member)
-        {
-            return member.GetCustomAttributes(typeof(Attribute), true)
-                .Any();
+        private static bool HasConstraints(MemberInfo member)
+        {   
+            return member.GetCustomAttribute(typeof(DynamicBoundAttribute)) != null;
         }
 
         private object RandomizeValue(
@@ -141,28 +146,74 @@ namespace ConnectionSettingsRando
             Random rng)
         {
             Type type = GetMemberType(member);
-
-            if (HasAttributes(member))
+            if (HasConstraints(member))
+            {
+                LastStats.SkippedMembers++;
+                ConnectionSettingsRando.Instance.Log($"Skipped {member.Name} - reason: HasConstraints.");
                 return value;
-
+            }
             if (type == typeof(bool))
-                return RandomizeBool(rng);
+            {
+                if (RandoInterop.Settings.IncludeBooleans)
+                {
+                    LastStats.RandomizedMembers++;
+                    return RandomizeBool(rng);
+                }
+                else
+                {
+                    OptOut(member.Name);
+                    return value;
+                }
+            }
 
             if (IsNumeric(type))
-                return RandomizeNumeric(member, rng);
+            {
+                if (RandoInterop.Settings.IncludeNumeric)
+                {
+                    LastStats.RandomizedMembers++;
+                    return RandomizeNumeric(member, rng);
+                }
+                else
+                {
+                    OptOut(member.Name);
+                    return value;
+                }
+            }
 
             if (type.IsEnum)
-                return RandomizeEnum(type, rng);
+            {
+                if (RandoInterop.Settings.IncludeCategorical)
+                {
+                    LastStats.RandomizedMembers++;
+                    return RandomizeEnum(type, rng);
+                }
+                else
+                {
+                    OptOut(member.Name);
+                    return value;
+                }
+            }
             
             if (!type.IsPrimitive && value != null)
+            {
+                LastStats.RandomizedMembers++;
                 return RandomizeObject(value, rng);
+            }
 
+            LastStats.SkippedMembers++;
+            ConnectionSettingsRando.Instance.Log($"Skipped {member.Name} - reason: Unhandled setting.");
             return value;
+        }
+
+        private void OptOut(string name)
+        {
+            LastStats.SkippedMembers++;
+            ConnectionSettingsRando.Instance.Log($"Skipped {name} - reason: Opted out.");
         }
 
         private object RandomizeBool(Random rng)
         {
-            return rng.Next(2) == 1;
+            return RandoInterop.Settings.SettingOdds > rng.NextDouble();
         }
 
         private object RandomizeNumeric(
