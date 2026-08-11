@@ -151,6 +151,10 @@ ForceFalse:
 GodhomeRandomizer.Enabled
 ```
 
+When first opening the game with the mod installed, a directory by the name of `ConnectionSettingsRando\Rules` will be generated on the Saves folder. Inside it, you can use any number of files which will be read on alphabetical order.
+
+For easier toggling of the files, a Disabled folder is also included inside it. Files inside the Disabled folder (or anywhere else for that matter) will be ignored.
+
 ### Exclude
 
 Settings listed under `Exclude` are left unchanged and are not randomized.
