@@ -1,3 +1,4 @@
+using System.IO;
 using RandomizerMod.Logging;
 using RandomizerMod.RC;
 
@@ -6,9 +7,11 @@ namespace ConnectionSettingsRando
     internal static class RandoInterop
     {
         public static CSRSettings Settings => ConnectionSettingsRando.Instance.GS;
+        public static OptOutManager OptOutManager { get; } = new();
         public static void Hook()
         {
             ConnectionMenu.Hook();
+            OptOutManager.Load();
             SettingsLog.AfterLogSettings += AddFileSettings;
             RandoController.OnBeginRun += Execute;
         }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration.Provider;
 using System.Reflection;
 
 namespace ConnectionSettingsRando
@@ -20,10 +21,10 @@ namespace ConnectionSettingsRando
 
             return method;
         }
-        private object Randomize(object settings, Type settingsType, Random rng)
+        private object Randomize(object settings, Type settingsType, Random rng, string providerName)
         {
             MethodInfo method = GetRandomizeMethod(settingsType);
-            return method.Invoke(randomizer, [settings, rng])!;
+            return method.Invoke(randomizer, [settings, rng, providerName])!;
         }
         public void RandomizeAll(Random rng)
         {
@@ -38,12 +39,14 @@ namespace ConnectionSettingsRando
                         Randomize(
                             provider.GetSettings(),
                             provider.SettingsType,
-                            rng));
+                            rng,
+                            provider.Name));
                     RandomizationStats stats = randomizer.LastStats;
                     ConnectionSettingsRando.Instance.Log(
                     $"{provider.Name}: " +
-                    $"{stats.RandomizedMembers} settings randomized, " +
-                    $"{stats.SkippedMembers} skipped");
+                    $"{stats.RandomizedCount} settings randomized, " +
+                    $"{stats.EnforcedCount} settings enforced, " +
+                    $"{stats.SkippedCount} skipped");
                 }
                 catch (Exception ex)
                 {
