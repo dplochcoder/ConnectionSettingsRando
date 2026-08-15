@@ -1,5 +1,3 @@
-using System;
-using IL.InControl;
 using MenuChanger.Attributes;
 
 namespace ConnectionSettingsRando
