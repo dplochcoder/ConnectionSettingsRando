@@ -22,6 +22,7 @@ Supported:
 - User-defined randomization rules
 - Excluding individual settings from randomization
 - Forcing boolean settings to `true` or `false`
+- Custom randomization code
 
 Not currently supported:
 - Dependency-aware randomization between unrelated settings
@@ -123,6 +124,12 @@ public float MaximumCost { get; set; }
 CSR first randomizes the settings normally and then validates their dynamic constraints. If a constraint is violated, the affected members are randomized again until the resulting settings satisfy all applicable bounds.
 
 This also works with nested settings objects.
+
+### CSRIgnore
+
+Any member annotated with an attribute named "CSRIgnoreAttribute" will be silently ignored by CSR. Connections providing their own randomization code may wish to handle these themselves.
+
+To avoid a hard dependency on CSR for such attributes, CSR does not define this attribute. Connections should define their own local copy instead.
 
 ## Randomization Rules
 

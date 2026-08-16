@@ -8,7 +8,7 @@ namespace ConnectionSettingsRando
     public class ConnectionSettingsRando : Mod, IGlobalSettings<CSRSettings> 
     {
         new public string GetName() => "ConnectionSettingsRando";
-        public override string GetVersion() => "1.2.0.0";
+        public override string GetVersion() => typeof(ConnectionSettingsRando).Assembly.GetName().Version.ToString(4);
         public CSRSettings GS { get; internal set; } = new();
         public void OnLoadGlobal(CSRSettings s) => GS = s;
         public CSRSettings OnSaveGlobal() => GS;

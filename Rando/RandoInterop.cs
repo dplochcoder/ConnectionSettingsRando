@@ -1,4 +1,3 @@
-using System.IO;
 using RandomizerMod.Logging;
 using RandomizerMod.RC;
 

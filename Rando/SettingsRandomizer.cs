@@ -17,94 +17,62 @@ namespace ConnectionSettingsRando
     }
     public class SettingsRandomizer
     {
-        public RandomizationStats LastStats { get; private set; } = new();
-        public T Randomize<T>(T settings, Random rng, string providerName)
+        private RandomizationStats stats = new();
+        public (T, RandomizationStats) Randomize<T>(T settings, Random rng, string providerName)
             where T : new()
         {
-            LastStats = new();
-            T clone = Clone(settings);
-            IReadOnlyList<string> path = [providerName];
-
-            foreach (MemberInfo member in GetMembers(typeof(T)))
-            {
-                object value = GetValue(member, clone);
-                object randomized = RandomizeValue(member, value, rng, path);
-                SetValue(member, clone, randomized);
-            }
-
-            while (!ValidateDynamicBounds(clone))
-            {
-                foreach (MemberInfo member in GetMembers(typeof(T)))
-                {
-                    if (HasInvalidDynamicBounds(clone, member))
-                    {
-                        object value = GetValue(member, clone);
-                        object randomized = RandomizeValue(member, value, rng, path);
-                        SetValue(member, clone, randomized);
-                    }
-                }
-            }
-            return clone;
+            stats = new();
+            return ((T)RandomizeObject(settings, rng, [providerName]), stats);
         }
+        public static bool Skip(Type memberType, string memberName, IReadOnlyList<string> path)
+        {
+            string name = string.Join(".", path.Append(memberName));
+            if (RandoInterop.OptOutManager.GetRule(name) is OptOutRule rule && rule.Action == OptOutAction.Exclude)
+                return true;
+            else if (memberType == typeof(bool))
+                return !RandoInterop.Settings.IncludeBooleans;
+            else if (IsNumeric(memberType))
+                return !RandoInterop.Settings.IncludeNumeric;
+            else if (memberType.IsEnum)
+                return !RandoInterop.Settings.IncludeCategorical;
+            else
+                return false;
+        }
+        public static bool Skip(MemberInfo member, IReadOnlyList<string> path) => Skip(GetMemberType(member), member.Name, path);
         private object RandomizeValue(MemberInfo member, object value, Random rng, IReadOnlyList<string> path)
         {
-            string name = string.Join(".", path.Append(member.Name));
-            OptOutRule rule = RandoInterop.OptOutManager.GetRule(name);
-            if (rule != null && rule.Action == OptOutAction.Exclude)
+            if (member.GetCustomAttributes().Any(attr => attr.GetType().Name == "CSRIgnoreAttribute"))
+                return value;
+
+            if (Skip(member, path))
             {
-                TrackSkip(member, path);
+                TrackSkip(member.Name, path);
                 return value;
             }
+
             Type type = GetMemberType(member);
             if (type == typeof(bool))
+                return RandomizeBool(member, path, rng);
+            else if (IsNumeric(type))
             {
-                if (RandoInterop.Settings.IncludeBooleans)
-                {
-                    return RandomizeBool(member, path, rng);
-                }
-                else
-                {
-                    TrackSkip(member, path);
-                    return value;
-                }
+                TrackRando(member.Name, path);
+                return RandomizeNumeric(member, rng);
             }
-
-            if (IsNumeric(type))
+            else if (type.IsEnum)
             {
-                if (RandoInterop.Settings.IncludeNumeric)
-                {
-                    TrackRando(member, path);
-                    return RandomizeNumeric(member, rng);
-                }
-                else
-                {
-                    TrackSkip(member, path);
-                    return value;
-                }
+                TrackRando(member.Name, path);
+                return RandomizeEnum(type, rng);
             }
-
-            if (type.IsEnum)
-            {
-                if (RandoInterop.Settings.IncludeCategorical)
-                {
-                    TrackRando(member, path);
-                    return RandomizeEnum(type, rng);
-                }
-                else
-                {
-                    TrackSkip(member, path);
-                    return value;
-                }
-            }
-            
-            if (!type.IsPrimitive && value != null)
+            else if (!type.IsPrimitive && value != null)
             {
                 IReadOnlyList<string> nestedPath = [.. path, member.Name];
                 return RandomizeObject(value, rng, nestedPath);
             }
-
-            TrackSkip(member, path);
-            return value;
+            else
+            {
+                TrackSkip(member.Name, path);
+                return value;
+            }
         }
 
         private static T Clone<T>(T source)
@@ -128,16 +96,16 @@ namespace ConnectionSettingsRando
             OptOutRule rule = RandoInterop.OptOutManager.GetRule(name);
             if (rule?.Action == OptOutAction.ForceTrue)
             {
-                TrackEnforce(member, path);
+                TrackEnforce(member.Name, path);
                 return true;
             }
             if (rule?.Action == OptOutAction.ForceFalse)
             {
-                TrackEnforce(member, path);
+                TrackEnforce(member.Name, path);
                 return false;
             }
             
-            TrackRando(member, path);
+            TrackRando(member.Name, path);
             return RandoInterop.Settings.SettingOdds > rng.NextDouble();
         }
 
@@ -344,16 +312,6 @@ namespace ConnectionSettingsRando
                     yield return field;
             }
         }
-        public static void CopyTo<T>(T source, T destination)
-        {
-            foreach (MemberInfo member in GetMembers(typeof(T)))
-            {
-                SetValue(
-                    member,
-                    destination,
-                    GetValue(member, source));
-            }
-        }
         private static object GetValue(MemberInfo member, object instance)
         {
             return member switch
@@ -397,37 +355,38 @@ namespace ConnectionSettingsRando
         private static T[] GetAttributes<T>(MemberInfo member)
             where T : Attribute
         {
-            return member
+            return [.. member
                 .GetCustomAttributes(typeof(T), true)
-                .Cast<T>()
-                .ToArray();
+                .Cast<T>()];
         }
-        private void TrackEnforce(MemberInfo member, IReadOnlyList<string> path)
+        private void TrackEnforce(string memberName, IReadOnlyList<string> path)
         {
-            string name = string.Join(".", path.Append(member.Name));
-            if (!LastStats.EnforcedMembers.Contains(name))
+            string name = string.Join(".", path.Append(memberName));
+            if (!stats.EnforcedMembers.Contains(name))
             {
-                LastStats.EnforcedCount++;
-                LastStats.EnforcedMembers.Add(name);
+                stats.EnforcedCount++;
+                stats.EnforcedMembers.Add(name);
                 ConnectionSettingsRando.Instance.Log($"Enforced {name}");
             }
         }
-        private void TrackRando(MemberInfo member, IReadOnlyList<string> path)
+        public static void TrackRando(string memberName, IReadOnlyList<string> path, RandomizationStats stats)
         {
-            string name = string.Join(".", path.Append(member.Name));
-            if (!LastStats.RandomizedMembers.Contains(name))
+            string name = string.Join(".", path.Append(memberName));
+            if (!stats.RandomizedMembers.Contains(name))
             {
-                LastStats.RandomizedCount++;
-                LastStats.RandomizedMembers.Add(name);
+                stats.RandomizedCount++;
+                stats.RandomizedMembers.Add(name);
                 ConnectionSettingsRando.Instance.Log($"Randomized {name}");
             }
         }
-        private void TrackSkip(MemberInfo member, IReadOnlyList<string> path)
+        private void TrackRando(string memberName, IReadOnlyList<string> path) => TrackRando(memberName, path, stats);
+        public static void TrackSkip(string memberName, IReadOnlyList<string> path, RandomizationStats stats)
         {
-            LastStats.SkippedCount++;
-            string name = string.Join(".", path.Append(member.Name));
-            LastStats.SkippedMembers.Add(name);
+            stats.SkippedCount++;
+            string name = string.Join(".", path.Append(memberName));
+            stats.SkippedMembers.Add(name);
             ConnectionSettingsRando.Instance.Log($"Skipped {name}");
         }
+        private void TrackSkip(string memberName, IReadOnlyList<string> path) => TrackSkip(memberName, path, stats);
     }
 }

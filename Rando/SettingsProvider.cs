@@ -5,36 +5,30 @@ namespace ConnectionSettingsRando
     public interface ISettingsProvider
     {
         string Name { get; }
-        Type SettingsType { get; }
-        object GetSettings();
-        void OverrideSettings(object settings);
+        RandomizationStats Randomize(Random rng);
     }
 
-    internal class SettingsProvider<T> : ISettingsProvider
+    internal class AutomatedSettingsProvider<T>(
+        string name,
+        Func<T> getter,
+        Action<T> apply) : ISettingsProvider
         where T : new()
     {
-        public string Name { get; }
-        public Type SettingsType => typeof(T);
-        private readonly Func<T> getter;
-        private readonly Action<T> apply;
-        public SettingsProvider(
-            string name,
-            Func<T> getter,
-            Action<T> apply)
+        public string Name { get; } = name;
+        public RandomizationStats Randomize(Random rng)
         {
-            Name = name;
-            this.getter = getter;
-            this.apply = apply;
+            SettingsRandomizer randomizer = new();
+            var (settings, stats) = randomizer.Randomize(getter(), rng, Name);
+            apply(settings);
+            return stats;
         }
+    }
 
-        public object GetSettings()
-        {
-            return getter();
-        }
-
-        public void OverrideSettings(object settings)
-        {
-            apply((T)settings);
-        }
+    internal class CustomSettingsProvider<T>(
+        string name,
+        Func<Random, RandomizationStats> randomize) : ISettingsProvider
+    {
+        public string Name { get; } = name;
+        public RandomizationStats Randomize(Random rng) => randomize(rng);
     }
 }
